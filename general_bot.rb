@@ -1,27 +1,13 @@
-# require 'telegram/bot'
-# #require './library/modules/standard_messages'
-#
-# token = '5445808153:AAFyTSBcOWusk5gNYKpBbeeFo8ha-S-TNTY'
-# Telegram::Bot::Client.run(token) do |bot|
-#   bot.listen do |message|
-#     if message.text == '/start'
-#       bot.api.sendMessage(chat_id: message.chat.id, text: "Добро пожаловать в официальный телеграм бот Synergy CRM!")
-#     elsif message.text == '/help'
-#       bot.api.sendMessage(chat_id: message.chat.id, text: "Нужна помощь? Кликните по ссылке @synergy_hde_bot и напишите нашим специалистам!")
-#       # bot.api.deleteMessage(chat_id: message.chat.id, message_id: message.message_id)
-#       bot.api.editMessageText(chat_id: message.chat.id, message_id: message.message_id, text: "Всё очень круто! Ваша CRM работает как надо! Могёте!")
-#     end
-#   end
-# end
-#
-#
+# frozen_string_literal: true
 require 'telegram/bot'
+require './library/database'
 require './library/mac-shake'
 require './library/standart_messages'
 require './library/callback_messages'
 require './library/modules/listener'
 require './library/modules/sample_messages'
 require './library/modules/api_crm'
+require './library/modules/security'
 
 require 'uri'
 require 'net/http'
@@ -30,9 +16,14 @@ require 'json/ext'
 
 class General_bot
   def initialize
+    Database.setup
+    $sample_msg = Listener::Sample_messages.sample_messages
     Telegram::Bot::Client.run(TelegramInfo::API_KEY) do |bot|
+      # Переменная хранит время запуска бота, чтобы исключить выполнение действий, которые были запрошены в предыдущей сессии.
+      start_bot_time = Time.now.to_i
       bot.listen do |message|
-        Listener.catch_new_message(message, bot)
+        # Если сообщение отправлено в нынешней сессии, продолжаем выполнение кода.
+        Listener.catch_new_message(message, bot) if Listener::Security::message_is_new?(start_bot_time, message)
       end
     end
   end
